@@ -24,7 +24,7 @@ struct ParameterPack
             template<typename From>
             struct unpack<0, From>
             {
-                using type = std::tuple<typename std::tuple_element<0, From>::type, W...>;
+                using type = typename F::Builder<typename std::tuple_element<0, From>::type, W...>::type;
             };
         };
 

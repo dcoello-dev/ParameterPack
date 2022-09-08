@@ -24,6 +24,15 @@ struct build_type<T, 0>
     using type = pt;
 };
 
+struct Factory
+{
+    template<typename ... Args>
+    struct Builder
+    {
+        using type = std::tuple<Args...>;
+    };
+};
+
 int main(
         void)
 {
@@ -37,7 +46,7 @@ int main(
     using built_types = typename build_type<pack2, 252>::type;
     std::cout << built_types::size << std::endl;
 
-    using Case_Types = built_types::Unpacker<>::unpack<built_types::size - 1, built_types::tuple>::type;
+    using Case_Types = built_types::Unpacker<Factory>::unpack<built_types::size - 1, built_types::tuple>::type;
 
     return 0;
 }
