@@ -1,9 +1,9 @@
-#ifndef PARAMTER_PACK_H_
-#define PARAMTER_PACK_H_
+#ifndef PARAMETER_PACK_H_
+#define PARAMETER_PACK_H_
 
 #include <tuple>
 
-namespace pack {
+namespace meta {
 
 template <typename ... A>
 struct ParameterPack
@@ -11,13 +11,13 @@ struct ParameterPack
     template<typename ... T>
     struct Pack
     {
-        template <typename ... W>
+        template <typename F, typename ... W>
         struct Unpacker
         {
             template<size_t rem, typename From>
             struct unpack
             {
-                using __tp = Unpacker<typename std::tuple_element<rem, From>::type, W...>;
+                using __tp = Unpacker<F, typename std::tuple_element<rem, From>::type, W...>;
                 using type = typename __tp::template unpack<rem - 1, From>::type;
             };
 
@@ -70,6 +70,7 @@ struct ParameterPack
     };
 };
 
-} // namespace pack
 
-#endif // PARAMTER_PACK_H_
+} // namespace meta
+
+#endif // PARAMETER_PACK_H_
