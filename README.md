@@ -132,3 +132,7 @@ Now we are ready to define the types!, this is done calling the `Unpacker` neste
 using Case_Types = built_types::Unpacker<Factory>::unpack<built_types::size - 1, built_types::tuple>::type;
 
 ```
+
+## Mix ParameterPacks
+
+Example here: [godbolt](https://godbolt.org/z/GG3Y8sP6z).

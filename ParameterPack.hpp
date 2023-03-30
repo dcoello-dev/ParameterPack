@@ -279,7 +279,7 @@ struct __Mix
         template<size_t __REM, typename S>
         struct __rpp_foreach
         {
-            static constexpr size_t __s = S::template get_val<__REM>;
+            using __s = typename S::template get<__REM>;
             using _tp = typename _OT::template Type<_HEAD, __s>;
             //! continue with rpp and add new element.
             using type = typename __rpp_foreach<__REM - 1, S>::type::template add_t<_tp>;
@@ -289,7 +289,7 @@ struct __Mix
         template<typename S>
         struct __rpp_foreach<0, S>
         {
-            static constexpr size_t __s = S::template get_val<0>;
+            using __s = typename S::template get<0>;
             using _tp = typename _OT::template Type<_HEAD, __s>;
             //! trigger lpp foreach and add last element.
             using type = typename __lpp_foreach<_TAIL...>::type::template add_t<_tp>;
@@ -306,7 +306,7 @@ struct __Mix
         template<size_t __REM, typename S>
         struct __rpp_foreach
         {
-            static constexpr size_t __s = S::template get_val<__REM>;
+            using __s = typename S::template get<__REM>;
             using _tp = typename _OT::template Type<H, __s>;
             using type = typename __rpp_foreach<__REM - 1, S>::type::template add_t<_tp>;
         };
@@ -315,7 +315,7 @@ struct __Mix
         template<typename S>
         struct __rpp_foreach<0, S>
         {
-            static constexpr size_t __s = S::template get_val<0>;
+            using __s = typename S::template get<0>;
             using _tp = typename _OT::template Type<H, __s>;
             template <typename ... Types>
             using __PP = ParameterPack<>::pack<Types...>;
