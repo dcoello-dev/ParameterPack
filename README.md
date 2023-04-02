@@ -6,6 +6,13 @@ Parameter pack manipulation utility.
 
 Just add .hpp file to your project ;).
 
+## Build examples
+
+```bash
+mkdir build && cd build
+cmake .. && make
+```
+
 ## Example
 
 You can see similar example in [godbolt](https://godbolt.org/z/83PoKzcr1).
