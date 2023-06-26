@@ -364,6 +364,58 @@ struct __Mix
 };
 
 /**
+ * @class __Concat
+ *
+ * @brief Concat two ParameterPacks.
+ *
+ * @details given a left LPP [A, B, C] and right RPP [1, 2, 3] generates [A, B, C, 1, 2, 3].
+ *
+ * @warning private use only.
+ *
+ * @tparam LPP left input ParameterPack.
+ * @tparam RPP right input ParameterPack.
+ */
+template<typename LPP, typename RPP>
+struct __Concat
+{
+
+    //! Navigates right TypePack.
+    template <size_t _RPP_CT, typename _RPP>
+    struct __navigate_right
+    {
+        using type = typename __navigate_right<_RPP_CT - 1, _RPP>::type::add_t<typename std::tuple_element<_RPP_CT,
+                        _RPP>::type>;
+    };
+
+    //! Right TypePack stop condition.
+    template <typename _RPP>
+    struct __navigate_right<0, _RPP>
+    {
+        using type = TypePack<typename std::tuple_element<0, _RPP>::type>;
+    };
+
+    //! Navigates left TypePack holding right TypePack.
+    template <size_t _LPP_CT, typename _LPP, typename _RPP>
+    struct __navigate_left
+    {
+        using type = typename __navigate_left<_LPP_CT - 1, _LPP, _RPP>::type::add_t<typename std::tuple_element<_LPP_CT,
+                        _LPP>::type>;
+    };
+
+    //! Left TypePack stop condition.
+    template <typename _LPP, typename _RPP>
+    struct __navigate_left<0, _LPP, _RPP>
+    {
+        // swich side.
+        using type = typename __navigate_right<_RPP::size - 1,
+                        typename _RPP::tuple>::type::add_t<typename std::tuple_element<0, _LPP>::type>;
+    };
+
+    // It is concated reversed so first RPP then LPP.
+    using type = typename __navigate_left<RPP::size - 1, typename RPP::tuple, LPP>::type;
+};
+
+/**
  * @class mix_t
  *
  * @brief mix RPP ParameterPack with LPP ParameterPack.
@@ -379,6 +431,19 @@ struct __Mix
  */
 template<typename B, typename CT, typename _LPP, typename _RPP>
 using mix_t = typename __Mix<B, CT, _LPP, _RPP>::type;
+
+/**
+ * @class concat_t
+ *
+ * @brief mix RPP ParameterPack with LPP ParameterPack.
+ *
+ * @details given a left LPP [A, B, C] and right RPP [1, 2, 3] generates [A, B, C, 1, 2, 3].
+ *
+ * @tparam LPP left input ParameterPack.
+ * @tparam RPP right input ParameterPack.
+ */
+template<typename LPP, typename RPP>
+using concat_t = typename __Concat<LPP, RPP>::type;
 
 } // namespace meta
 
