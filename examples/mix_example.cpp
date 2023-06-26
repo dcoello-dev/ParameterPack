@@ -7,7 +7,7 @@
 #include <typeinfo>
 #include "utils.hpp"
 
-#include "../ParameterPack.hpp"
+#include <ParameterPack.hpp>
 
 using Sizes =
         meta::TypePack<meta::Constant<size_t, 0>, meta::Constant<size_t, 1>>;
