@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - '**'
+
+concurrency:
+  group: ${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+    Build:
+        runs-on: ubuntu-latest
+
+        steps:
+          - name: Checkout
+            uses: actions/checkout@v3
+            with:
+              fetch-depth: 0
+              clean: true
+              path: repo
+          - name: Install gtest manually
+            run: sudo apt-get install libgtest-dev && cd /usr/src/gtest && sudo cmake CMakeLists.txt && sudo make && sudo cp lib/*.a /usr/lib && sudo ln -s /usr/lib/libgtest.a /usr/local/lib/libgtest.a && sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
+          - name: configure
+            run: mkdir -p  repo/build && cd repo/build && cmake ..
+          - name: make
+            run: cd repo/build && make
+
+    Style:
+        runs-on: ubuntu-latest
+
+        steps:
+          - name: Checkout
+            uses: actions/checkout@v3
+            with:
+              fetch-depth: 0
+              clean: true
+              path: repo
+          - name: Install uncrustify
+            run: git clone -b uncrustify-0.71.0 https://github.com/uncrustify/uncrustify && mkdir uncrustify/build && cd uncrustify/build && cmake .. && make && sudo make install
+          - name: Check style
+            run: cd repo && find . -name \*.hpp -exec uncrustify -c .github/uncrustify.cfg --check  {} + && find . -name \*.cpp -exec uncrustify -c .github/uncrustify.cfg --check  {} +
