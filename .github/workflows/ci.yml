@@ -26,3 +26,18 @@ jobs:
             run: mkdir -p  repo/build && cd repo/build && cmake ..
           - name: make
             run: cd repo/build && make
+
+    Style:
+        runs-on: ubuntu-latest
+
+        steps:
+          - name: Checkout
+            uses: actions/checkout@v3
+            with:
+              fetch-depth: 0
+              clean: true
+              path: repo
+          - name: Install uncrustify
+            run: git clone -b uncrustify-0.71.0 https://github.com/uncrustify/uncrustify && mkdir uncrustify/build && cd uncrustify/build && cmake .. && make && sudo make install
+          - name: Check style
+            run: cd repo && find . -name \*.hpp -exec uncrustify -c .github/uncrustify.cfg --check  {} + && find . -name \*.cpp -exec uncrustify -c .github/uncrustify.cfg --check  {} +
