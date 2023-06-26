@@ -20,12 +20,14 @@ jobs:
               fetch-depth: 0
               clean: true
               path: repo
-          - name: Install gtest manually
-            run: sudo apt-get install libgtest-dev && cd /usr/src/gtest && sudo cmake CMakeLists.txt && sudo make && sudo cp lib/*.a /usr/lib && sudo ln -s /usr/lib/libgtest.a /usr/local/lib/libgtest.a && sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
-          - name: configure
+          - name: Install gtest
+            run: git clone -b release-1.12.0 https://github.com/google/googletest.git && mkdir googletest/build && cd googletest/build && cmake .. && make && sudo make install
+          - name: Configure
             run: mkdir -p  repo/build && cd repo/build && cmake ..
-          - name: make
+          - name: Make
             run: cd repo/build && make
+          - name: Test
+            run: cd repo/build && ./gtest_example
 
     Style:
         runs-on: ubuntu-latest

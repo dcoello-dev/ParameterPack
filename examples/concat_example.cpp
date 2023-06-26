@@ -7,7 +7,7 @@
 #include <typeinfo>
 #include "utils.hpp"
 
-#include "../ParameterPack.hpp"
+#include <ParameterPack.hpp>
 
 struct MyTypeBuilder
 {
