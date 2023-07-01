@@ -7,12 +7,13 @@ include(GoogleTest)
 
 include_directories(include)
 
-add_executable ( mix_example examples/mix_example.cpp )
-add_executable ( concat_example examples/concat_example.cpp )
-add_executable ( typemanager_example examples/typemanager_example.cpp )
-add_executable ( gtest_example examples/gtest_example.cpp )
+file(GLOB_RECURSE TEST_SRCS
+    ./test/*.cpp
+)
 
-target_link_libraries(gtest_example
+add_executable(tests ${TEST_SRCS})
+
+target_link_libraries(tests
     PRIVATE
     GTest::gtest
     GTest::gtest_main
