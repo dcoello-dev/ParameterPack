@@ -1,10 +1,6 @@
-#include <cstdlib>
-#include <iostream>
-#include <memory>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <typeinfo>
+#include <gtest/gtest.h>
+#include <gmock/gmock.h>
+
 #include "utils.hpp"
 
 #include <ParameterPack.hpp>
@@ -65,12 +61,16 @@ using FinalTypes =
         meta::mix_t<MyTypeBuilder, MixTypeSize, TestTypes, PreallocAndMaxSizes>;
 
 
+struct MixTest : public ::testing::Test
+{};
 
-int main(
-        void)
-{
+
+TEST_F(MixTest, TEST1){
     auto mytuple = FinalTypes{};
     int size = std::tuple_size<decltype(mytuple)>::value;
+
+    ASSERT_EQ(size, 8);
+
     std::cout << size << " types in the tuple" << std::endl;
     std::istringstream type_name(type(mytuple));
     std::string nested_type{};
@@ -88,5 +88,4 @@ int main(
         }
     }
     std::cout << to_print << std::endl;
-    return 0;
 }

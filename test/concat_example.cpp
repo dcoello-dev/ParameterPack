@@ -1,10 +1,6 @@
-#include <cstdlib>
-#include <iostream>
-#include <memory>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <typeinfo>
+#include <gtest/gtest.h>
+#include <gmock/gmock.h>
+
 #include "utils.hpp"
 
 #include <ParameterPack.hpp>
@@ -26,13 +22,17 @@ using FinalTypes =
         typename meta::concat_t<Types1, Types2>::unpack_t<MyTypeBuilder>;
 
 
+struct ConcatTest : public ::testing::Test
+{};
 
-int main(
-        void)
-{
+
+TEST_F(ConcatTest, TEST1){
     auto mytuple = FinalTypes{};
     int size = std::tuple_size<decltype(mytuple)>::value;
-    std::cout << size << " types in the tuple" << std::endl;
+
+    ASSERT_EQ(size, 4);
+
+    std::cerr << size << " types in the tuple" << std::endl;
     std::istringstream type_name(type(mytuple));
     std::string nested_type{};
     std::string to_print{};
@@ -40,7 +40,7 @@ int main(
     {
         if (nested_type.find("MyType") != std::string::npos)
         {
-            std::cout << to_print << std::endl;
+            std::cerr << to_print << std::endl;
             to_print = nested_type;
         }
         else
@@ -48,6 +48,5 @@ int main(
             to_print += nested_type;
         }
     }
-    std::cout << to_print << std::endl;
-    return 0;
+    std::cerr << to_print << std::endl;
 }

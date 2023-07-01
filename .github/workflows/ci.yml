@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-    Build:
+    Test:
         runs-on: ubuntu-latest
 
         steps:
@@ -27,7 +27,7 @@ jobs:
           - name: Make
             run: cd repo/build && make
           - name: Test
-            run: cd repo/build && ./gtest_example
+            run: cd repo/build && ./tests
 
     Style:
         runs-on: ubuntu-latest

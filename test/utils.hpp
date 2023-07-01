@@ -4,7 +4,7 @@
 #include <memory>
 #include <cxxabi.h>
 
-std::string demangle(
+inline std::string demangle(
         const char* name)
 {
     int status = -4;
@@ -14,7 +14,8 @@ std::string demangle(
     return (status == 0) ? res.get() : name;
 }
 
-template <class T> std::string type(
+template <class T>
+std::string type(
         const T& t)
 {
 
