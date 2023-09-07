@@ -1,5 +1,4 @@
 #include <gtest/gtest.h>
-#include <gmock/gmock.h>
 
 #include "utils.hpp"
 
@@ -24,7 +23,7 @@ struct SizeCombination
     };
 };
 
-using PreallocAndMaxSizes =
+using MatrixSizes =
         meta::mix_t<SizesBuilder, SizeCombination, Sizes, Sizes>;
 
 struct MixTypeSize
@@ -58,7 +57,7 @@ struct MyTypeBuilder
 using TestTypes = meta::TypePack<int, float>;
 
 using FinalTypes =
-        meta::mix_t<MyTypeBuilder, MixTypeSize, TestTypes, PreallocAndMaxSizes>;
+        meta::mix_t<MyTypeBuilder, MixTypeSize, TestTypes, MatrixSizes>;
 
 
 struct MixTest : public ::testing::Test

@@ -7,7 +7,6 @@
 
 namespace meta {
 
-
 /**
  * @class ParameterPack
  *
@@ -20,6 +19,7 @@ namespace meta {
 template <typename ... _TYPE_BUFFER>
 struct ParameterPack
 {
+
     /**
      * @class pack
      *
@@ -30,6 +30,7 @@ struct ParameterPack
     template<typename ... _INPUT_TYPES>
     struct pack
     {
+
         /**
          * @class __Unpacker
          *
@@ -171,8 +172,8 @@ struct ParameterPack
          */
         template <size_t N>
         using pop_t = typename pop<N>::type;
-    };
 
+    };
 
 
     // PRIVATE internal packer functionallity

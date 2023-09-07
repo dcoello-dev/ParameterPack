@@ -20,7 +20,4 @@ cmake .. && make
 
 ## Examples
 
-- [Basic functionality](./doc/basic_functionality.md)
-- [Unpack](./doc/unpack.md)
-- [Concatenation](./doc/concatenation.md)
-- [Mix](./doc/mix.md)
+- [User Manual](./doc/user_manual.org)

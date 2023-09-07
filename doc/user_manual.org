@@ -1,0 +1,1019 @@
+#+title: User Manual
+#+description: parameterpack basic functionallity
+#+startup: preview
+#+author: dcoello
+#+email: dcpulido91@gmail.com
+
+* Installation
+
+Just add =.hpp= file to your project ;).
+
+- *ParameterPack.hpp*: =TypePack= generation and manipulation.
+- *TypeManager.hpp*: framework proposal to get 100% line, branch and function coverage of templatic c++ classes with GTEST parametrized tests.
+
+Test are nice examples of use.
+
+#+begin_src sh :main no :results silent
+mkdir build && cd build
+cmake .. && make
+#+end_src
+
+* Implementation
+
+#+begin_src c++ :main no :results silent :tangle ../include/ParameterPack.hpp :eval never-export :exports none
+#ifndef PARAMETER_PACK_H_
+#define PARAMETER_PACK_H_
+
+#+end_src
+
+=ParameterPack= uses a few dependencies:
+
+#+begin_src C++ :main no :results silent :tangle ../include/ParameterPack.hpp
+#include <cstddef>
+#include <tuple>
+#include <type_traits>
+
+#+end_src
+
+Everithing is implemented on =meta= namespace:
+
+#+begin_src C++ :main no :results silent :tangle ../include/ParameterPack.hpp
+namespace meta {
+
+#+end_src
+
+=ParameterPack= is the most important class, it holds all the methods and functionality to manipulate paramater packs:
+
+#+begin_src C++ :main no :results silent :tangle ../include/ParameterPack.hpp
+
+/**
+ * @class ParameterPack
+ *
+ * @brief Holds a pack of types.
+ *
+ * @warning All classes and variables that starts with `_` are for internal use.
+ *
+ * @tparam _TYPE_BUFFER... Holds pack of types, it acts like internal memory of types.
+ */
+template <typename ... _TYPE_BUFFER>
+struct ParameterPack
+{
+#+end_src
+
+
+
+It holds =pack= struct that holds the data, from now we are going to refer to it =TypePack= alias:
+
+#+begin_src C++ :tangled no :results silent
+/**
+ ,* @class TypePack
+ ,*
+ ,* @brief syntactic sugar to intantiate a new pack.
+ ,*
+ ,* @tparam Types parameter pack with input types.
+ ,*/
+template <typename ... Types>
+using TypePack = meta::ParameterPack<>::pack<Types...>;
+
+#+end_src
+
+=typepack= offers an api for manipulating it and generating a new =typepack= with modifications.
+
+once all modifications are done you can unpack =typepack= to use it in a builder.
+
+we are going to check the functionallity building some gtest, for it, we need to add some includes and a [[https://github.com/google/googletest/blob/main/docs/primer.md#test-fixtures-using-the-same-data-configuration-for-multiple-tests-same-data-multiple-tests][test fixture class]]:
+
+#+begin_src c++ :main no :results silent :tangle ../test/basic_test.cpp :eval never-export :exports none
+#include <gtest/gtest.h>
+
+#include "utils.hpp"
+#include <ParameterPack.hpp>
+
+
+struct BasicTest : public ::testing::Test
+{};
+
+#+end_src
+
+** Pack
+
+Pack functionallity can be seen as a constructor, allows us to create a =typepack= with the initial values that we want:
+
+*** Implementation
+
+#+begin_src C++ :main no :results silent :tangle ../include/ParameterPack.hpp
+    /**
+     * @class pack
+     *
+     * @brief Pack functionality and usefull accessors.
+     *
+     * @tparam _INPUT_TYPES... holds pack input types, first call acts like constructor.
+     */
+    template<typename ... _INPUT_TYPES>
+    struct pack
+    {
+#+end_src
+
+*** Example
+
+It can be use like this:
+
+#+begin_src C++ :tangled no :results silent
+using base = meta::TypePack<int, float, double>;
+#+end_src
+
+As we said before =typepack= is an alias of =ParameterPack::pack<...>=, therefore next example is similar to previous one:
+
+#+begin_src C++ :tangled no :results silent
+using base = meta::ParameterPack<>::pack<int, float, double>;
+#+end_src
+
+** Unpack
+
+#+begin_src c++ :main no :results silent :tangle ../include/ParameterPack.hpp :eval never-export :exports none
+        /**
+         * @class __Unpacker
+         *
+         * @brief Unpack type pack using BUILDER hook.
+         *
+         * @warning internal use.
+         *
+         * @tparam BUILDER hook to specify in wich structure unpack,
+         *      BUILDER type must have nested Build<Types...>.
+         * @tparam _BUFFER hold unpacked tuple in a parameter pack.
+         */
+        template <typename BUILDER, typename ... _BUFFER>
+        struct __Unpacker
+        {
+            /**
+             * @class __unpack_elem
+             *
+             * @brief recursive function to unpack elements, one by one. Transition from
+             * tuple type types to parameter pack.
+             *
+             * @warning internal use.
+             *
+             * @tparam __REM remaining elements, plus stop condition.
+             * @tparam _FROM input tuple types.
+             */
+            template<size_t __REM, typename _FROM>
+            struct __unpack_elem
+            {
+                //! recursive internal variable.
+                using __tp = __Unpacker<BUILDER, typename std::tuple_element<__REM, _FROM>::type, _BUFFER...>;
+                //! holds output type.
+                using type = typename __tp::template __unpack_elem<__REM - 1, _FROM>::type;
+            };
+
+            /**
+             * @class __unpack_elem
+             *
+             * @brief stop condicion when __REM == 0.
+             *
+             * @warning internal use.
+             *
+             * @tparam _FROM input tuple types.
+             */
+            template<typename _FROM>
+            struct __unpack_elem<0, _FROM>
+            {
+                //! invoke BUILDER::Build with parameter pack, hold output value on type.
+                using type =
+                        typename BUILDER::template Build<typename std::tuple_element<0, _FROM>::type,
+                                _BUFFER...>::type;
+            };
+        };
+
+#+end_src
+
+#+begin_src c++ :main no :results silent :tangle ../include/ParameterPack.hpp :eval never-export :exports none
+        //! alias for ParameterPack mapping _INPUT_TYPES.
+        using __packer = ParameterPack<_INPUT_TYPES...>;
+
+        // PUBLIC interface
+
+        //! tuple holding types pack.
+        using tuple = std::tuple<_INPUT_TYPES...>;
+        //! types index sequence.
+        using sequence = std::index_sequence_for<_INPUT_TYPES...>;
+        //! number of types in pack.
+        static constexpr auto size = sizeof...(_INPUT_TYPES);
+
+#+end_src
+
+Once you finish updating your =TypePack= you can utilize it using a =Builder=.
+
+*** Implementation
+
+Implementation its done using several private meta functions, for simplicity 2 high level functions are provided =unpack= and =unpack_t=:
+
+#+begin_src C++ :main no :results silent :tangle ../include/ParameterPack.hpp
+        /**
+         ,* @class unpack
+         ,*
+         ,* @brief public accessor for unpacking.
+         ,*
+         ,* @details BUILDER hook to specify in wich structure unpack,
+         ,*      BUILDER type must have nested Build<Types...>.
+         ,*
+         ,* @tparam BUILDER output type builder.
+         ,*/
+        template<typename BUILDER>
+        using unpack = typename __Unpacker<BUILDER>::template __unpack_elem<size - 1, tuple>;
+
+        //! alias for unpacking output type.
+        template<typename B>
+        using unpack_t = typename __Unpacker<B>::template __unpack_elem<size - 1, tuple>::type;
+
+#+end_src
+
+*** Builder
+
+A =Builder= is a metaprogramming function that uses the unpacked =TypePack= building or calling whatever you want.
+
+Next =Builder= builds a =std::tuple=:
+
+#+begin_src C++ :tangled no :results silent
+// Builder that builds a tuple.
+struct TupleBuilder
+{
+    template<typename ... Args>
+    struct Build
+    {
+        using type = std::tuple<Args...>;
+    };
+};
+#+end_src
+
+GTEST =Builder=:
+
+#+begin_src C++ :tangled no :results silent
+// Builder that builds gtest testing::Types.
+struct GTESTBuilder
+{
+    template<typename ... Args>
+    struct Build
+    {
+        using type = ::testing::Types<Args...>;
+    };
+};
+#+end_src
+
+*** Example
+
+Given an existing =TypePack= call =unpack_t= with a =Builder= to unpack it:
+
+#+begin_src C++ :tangled no :results silent
+using base = meta::TypePack<int, long>;
+
+using my_tuple = base::unpack_t<TupleBuilder>;
+using my_parametrized_test_types = base::unpack_t<GTESTBuilder>;
+#+end_src
+
+** GET
+
+Get Nth element type of given =TypePack=
+
+*** Implementation
+
+#+begin_src C++ :main no :results silent :tangle ../include/ParameterPack.hpp
+        /**
+         * @class get
+         *
+         * @brief get Nth element type of the type pack.
+         *
+         * @tparam N type index.
+         */
+        template <size_t N>
+        using get = typename std::tuple_element<N, tuple>::type;
+
+#+end_src
+
+*** Example
+
+Given an initial =TypePack= named base:
+
+#+begin_src C++ :tangled no :results silent
+// Existing TypePack with 3 types.
+using base = meta::TypePack<int, std::string, long>;
+#+end_src
+
+Get type from =TypePack= by index:
+
+#+begin_src C++ :tangled no :results silent
+// get<1> returns std::string type.
+typename base::get<1> name = "my name";
+#+end_src
+
+Next test checks *get* functionallity:
+
+#+begin_src C++ :main no :results silent :tangle ../test/basic_test.cpp
+TEST_F(BasicTest, GET){
+    using base = meta::TypePack<int, float, long>;
+
+    ASSERT_TRUE(typeid(base::get<0>) == typeid(int));
+    ASSERT_TRUE(typeid(base::get<1>) == typeid(float));
+    ASSERT_TRUE(typeid(base::get<2>) == typeid(long));
+}
+
+#+end_src
+
+** GET VAL
+
+Get Nth element value of the =TypePack= in case its a =meta::Constant=.
+
+*** Implementation
+
+#+begin_src C++ :main no :results silent :tangle ../include/ParameterPack.hpp
+        /**
+         * @class get_val
+         *
+         * @brief get Nth element value of the type pack in case its a meta::Constant.
+         *
+         * @tparam N value index.
+         */
+        template <size_t N>
+        static constexpr auto get_val = std::tuple_element<N, tuple>::type::value;
+
+#+end_src
+
+*** Example
+
+Given an initial =TypePack= named base:
+
+#+begin_src C++ :tangled no :results silent
+// Existing TypePack with 3 Constant types.
+using base = meta::TypePack<meta::Constant<size_t, 0>,
+                    meta::Constant<size_t, 1>,
+                    meta::Constant<size_t, 2>>;
+#+end_src
+
+Get value from =TypePack= by index:
+
+#+begin_src C++ :tangled no :results silent
+// get_val<1> returns 1.
+auto name = base::get_val<1>;
+#+end_src
+
+#+begin_src C++ :main no :results silent :tangle ../test/basic_test.cpp
+TEST_F(BasicTest, GET_VAL){
+    using base = meta::TypePack<meta::Constant<size_t, 0>,
+                    meta::Constant<size_t, 1>,
+                    meta::Constant<size_t, 2>>;
+
+    ASSERT_EQ(base::get_val<0>, 0);
+    ASSERT_EQ(base::get_val<1>, 1);
+    ASSERT_EQ(base::get_val<2>, 2);
+}
+#+end_src
+
+
+** ADD
+
+*** Implementation
+
+#+begin_src C++ :main no :results silent :tangle ../include/ParameterPack.hpp
+        /**
+         * @class add
+         *
+         * @brief push_back a new type element into the pack.
+         *
+         * @tparam E new element.
+         */
+        template <typename E>
+        using add = typename __packer::template _push<E>;
+
+        /**
+         * @class add_t
+         *
+         * @brief alias returning type.
+         *
+         * @tparam E new element.
+         */
+        template <typename E>
+        using add_t = typename add<E>::type;
+
+#+end_src
+
+*** Example
+
+Given an initial =TypePack= named base:
+
+#+begin_src C++ :tangled no :results silent
+using base = meta::TypePack<int>;
+#+end_src
+
+We can add a new type to existing =TypePack= invoking its =add_t= method, this generates a new =TypePack=:
+
+#+begin_src C++ :tangled no :results silent
+using final = base::add_t<float>;
+#+end_src
+
+Next test checks *add* functionallity:
+
+#+begin_src C++ :main no :results silent :tangle ../test/basic_test.cpp
+TEST_F(BasicTest, ADD){
+    using base = meta::TypePack<int>;
+    ASSERT_EQ(base::size, 1);
+
+    using add_float = base::add_t<float>;
+    ASSERT_EQ(add_float::size, 2);
+
+    using add_repeated = add_float::add_t<float>;
+    ASSERT_EQ(add_repeated::size, 3);
+}
+#+end_src
+
+** POP
+
+*** Implementation
+
+#+begin_src C++ :main no :results silent :tangle ../include/ParameterPack.hpp
+        /**
+         * @class pop
+         *
+         * @brief pop N element types.
+         *
+         * @tparam N number of elements to remove from the pack.
+         */
+        template <size_t N>
+        using pop = typename __packer::template _pop<N>;
+
+        /**
+         * @class pop_t
+         *
+         * @brief alias returning type.
+         *
+         * @tparam N number of elements to remove from the pack.
+         */
+        template <size_t N>
+        using pop_t = typename pop<N>::type;
+
+#+end_src
+
+
+*** Example
+
+Given an initial =TypePack= named base:
+
+#+begin_src C++ :tangled no :results silent
+// Existing TypePack with 3 types.
+using base = meta::TypePack<int, float, long>;
+#+end_src
+
+Remove 2 types from the begining of an existing =TypePack= using =pop_t=, this generates a new =TypePack=:
+
+#+begin_src C++ :tangled no :results silent
+// pop_t<N> remove N elements from the back of base.
+using final = base::pop_t<2>;
+#+end_src
+
+Next test checks *pop* functionallity:
+
+#+begin_src C++ :main no :results silent :tangle ../test/basic_test.cpp
+TEST_F(BasicTest, POP){
+    using base = meta::TypePack<int, float>;
+    ASSERT_EQ(base::size, 2);
+
+    using removed_one = base::pop_t<1>;
+    ASSERT_EQ(removed_one::size, 1);
+    ASSERT_TRUE(typeid(removed_one::get<0>) == typeid(float));
+
+    using base2 = meta::TypePack<int, float, long>;
+    ASSERT_EQ(base2::size, 3);
+
+    using removed_two = base2::pop_t<2>;
+    ASSERT_EQ(removed_two::size, 1);
+    ASSERT_TRUE(typeid(removed_two::get<0>) == typeid(long));
+}
+
+#+end_src
+
+* Constant
+#+begin_src c++ :main no :results silent :tangle ../include/ParameterPack.hpp :eval never-export :exports none
+    };
+
+
+    // PRIVATE internal packer functionallity
+    template <typename C, typename ... R>
+    struct _push
+    {
+        using __tp = ParameterPack<_TYPE_BUFFER..., C>;
+        using type = typename __tp::template concat<R...>::type;
+    };
+
+    template <typename C>
+    struct _push<C>
+    {
+        using __tp = ParameterPack<_TYPE_BUFFER..., C>;
+        using type = pack<_TYPE_BUFFER..., C>;
+    };
+
+    template <size_t N, typename C, typename ... R>
+    struct _remove
+    {
+        using type = typename _remove<N - 1, R...>::type;
+    };
+
+    template <typename C, typename ... R>
+    struct _remove<0, C, R...>
+    {
+        using type = pack<C, R...>;
+    };
+
+    template <size_t N>
+    struct _pop
+    {
+        using type = typename _remove<N, _TYPE_BUFFER...>::type;
+    };
+};
+
+/**
+ * @class TypePack
+ *
+ * @brief syntactic sugar to intantiate a new pack.
+ *
+ * @tparam Types parameter pack with input types.
+ */
+template <typename ... Types>
+using TypePack = meta::ParameterPack<>::pack<Types...>;
+
+#+end_src
+
+=meta::Constant= wraps values as types to be managed by =TypePack=.
+
+#+begin_src C++ :main no :results silent :tangle ../include/ParameterPack.hpp
+/**
+ * @class Constant
+ *
+ * @brief syntactic sugar to hold an integral constant.
+ *
+ * @tparam T is the type of the constant.
+ * @tparam __v is the value of the constant.
+ */
+template<typename T, T __v>
+using Constant = std::integral_constant<T, __v>;
+
+#+end_src
+
+
+#+begin_src c++ :main no :results silent :tangle ../include/ParameterPack.hpp :eval never-export :exports none
+/**
+ * @class __Mix
+ *
+ * @brief Mix two ParameterPacks in to one.
+ *
+ * @details given a left LPP [A, B, C] and right RPP [1, 2, 3] generates an
+ *  output BUILDER::Build = [A1, A2, A3, B1, B2, B3, C1, C2, C3] of types OT.
+ *
+ * @warning private use only.
+ *
+ * @tparam _BUILDER final builder, need to have a nester Build method.
+ * @tparam _OT output type, neet to have 2 templatic parameters that will handle
+ *  combination of RPP and LPP element types.
+ * @tparam _LPP left input ParameterPack.
+ * @tparam _RPP right input ParameterPack.
+ */
+template<typename _BUILDER, typename _OT, typename _LPP, typename _RPP>
+struct __Mix
+{
+    /**
+     * @class __lpp_foreach
+     *
+     * @brief LPP foreach.
+     *
+     * @details for each of LPP elements doing for each of LPP elements for each one.
+     *
+     * @warning private use only.
+     *
+     * @tparam _HEAD current type element of LPP.
+     * @tparam _TAIL remaining elements of LPP.
+     */
+    template <typename _HEAD, typename ... _TAIL>
+    struct __lpp_foreach
+    {
+        /**
+         * @class __rpp_foreach
+         *
+         * @brief RPP foreach.
+         *
+         * @details foreach RPP build _OT type with LPP and RPP current elements.
+         *
+         * @warning private use only.
+         *
+         * @tparam __REM counter.
+         * @tparam S LPP.
+         */
+        template<size_t __REM, typename S>
+        struct __rpp_foreach
+        {
+            using __s = typename S::template get<__REM>;
+            using _tp = typename _OT::template Type<_HEAD, __s>;
+            //! continue with rpp and add new element.
+            using type = typename __rpp_foreach<__REM - 1, S>::type::template add_t<_tp>;
+        };
+
+        //! stop condition when counter == 0.
+        template<typename S>
+        struct __rpp_foreach<0, S>
+        {
+            using __s = typename S::template get<0>;
+            using _tp = typename _OT::template Type<_HEAD, __s>;
+            //! trigger lpp foreach and add last element.
+            using type = typename __lpp_foreach<_TAIL...>::type::template add_t<_tp>;
+        };
+
+        //! Built BUILDER::Build Type of OTs.
+        using type = typename __rpp_foreach<_RPP::size - 1, _RPP>::type;
+    };
+
+    // Stop condition for lpp foreach.
+    template <typename H>
+    struct __lpp_foreach<H>
+    {
+        template<size_t __REM, typename S>
+        struct __rpp_foreach
+        {
+            using __s = typename S::template get<__REM>;
+            using _tp = typename _OT::template Type<H, __s>;
+            using type = typename __rpp_foreach<__REM - 1, S>::type::template add_t<_tp>;
+        };
+
+        //! Last LPP and RPP element creates ParameterPack.
+        template<typename S>
+        struct __rpp_foreach<0, S>
+        {
+            using __s = typename S::template get<0>;
+            using _tp = typename _OT::template Type<H, __s>;
+            template <typename ... Types>
+            using __PP = ParameterPack<>::pack<Types...>;
+            //! Creates ParameterPack that is going to be pushed to the top.
+            using type = __PP<_tp>;
+        };
+
+        using type = typename __rpp_foreach<_RPP::size - 1, _RPP>::type;
+    };
+
+
+    /**
+     * @class __trigger
+     *
+     * @brief entry point to trigger mix.
+     *
+     * @details Mix process involves two nested unpack processes.
+     *
+     * @warning private use only.
+     */
+    struct __trigger
+    {
+        /**
+         * @class _NestedBuilder
+         *
+         * @brief Builder for high order unpack process.
+         *
+         * @warning private use only.
+         */
+        struct _NestedBuilder
+        {
+            template<typename ... Args>
+            struct Build
+            {
+                //! Calls internal __lpp_foreach with LPP parameter pack and triggers RPP unpack with given BUILDER
+                using type = typename __lpp_foreach<Args...>::type::template unpack_t<_BUILDER>;
+            };
+        };
+
+        //! triggers LPP unpack with _NestedBuilder
+        using type = typename _LPP::template unpack_t<_NestedBuilder>;
+    };
+
+    //! Output type.
+    using type = typename __trigger::type;
+};
+
+/**
+ * @class __Concat
+ *
+ * @brief Concat two ParameterPacks.
+ *
+ * @details given a left LPP [A, B, C] and right RPP [1, 2, 3] generates [A, B, C, 1, 2, 3].
+ *
+ * @warning private use only.
+ *
+ * @tparam LPP left input ParameterPack.
+ * @tparam RPP right input ParameterPack.
+ */
+template<typename LPP, typename RPP>
+struct __Concat
+{
+
+    //! Navigates right TypePack.
+    template <size_t _RPP_CT, typename _RPP>
+    struct __navigate_right
+    {
+        using type = typename __navigate_right<_RPP_CT - 1, _RPP>::type::add_t<typename std::tuple_element<_RPP_CT,
+                        _RPP>::type>;
+    };
+
+    //! Right TypePack stop condition.
+    template <typename _RPP>
+    struct __navigate_right<0, _RPP>
+    {
+        using type = TypePack<typename std::tuple_element<0, _RPP>::type>;
+    };
+
+    //! Navigates left TypePack holding right TypePack.
+    template <size_t _LPP_CT, typename _LPP, typename _RPP>
+    struct __navigate_left
+    {
+        using type = typename __navigate_left<_LPP_CT - 1, _LPP, _RPP>::type::add_t<typename std::tuple_element<_LPP_CT,
+                        _LPP>::type>;
+    };
+
+    //! Left TypePack stop condition.
+    template <typename _LPP, typename _RPP>
+    struct __navigate_left<0, _LPP, _RPP>
+    {
+        // swich side.
+        using type = typename __navigate_right<_RPP::size - 1,
+                        typename _RPP::tuple>::type::add_t<typename std::tuple_element<0, _LPP>::type>;
+    };
+
+    // It is concated reversed so first RPP then LPP.
+    using type = typename __navigate_left<RPP::size - 1, typename RPP::tuple, LPP>::type;
+};
+
+#+end_src
+
+* Mix
+
+Given 2 existing =TypePacks=, a =MixType= and a =Builder= you can mix them into a new one.
+
+** Implementation
+
+#+begin_src C++ :main no :results silent :tangle ../include/ParameterPack.hpp
+/**
+ * @class mix_t
+ *
+ * @brief mix RPP ParameterPack with LPP ParameterPack.
+ *
+ * @details given a left LPP [A, B, C] and right RPP [1, 2, 3] generates an
+ *  output BUILDER::Build = [A1, A2, A3, B1, B2, B3, C1, C2, C3] of types OT.
+ *
+ * @tparam _BUILDER final builder, need to have a nester Build method.
+ * @tparam _OT output type, neet to have 2 templatic parameters that will handle
+ *  combination of RPP and LPP element types.
+ * @tparam _LPP left input ParameterPack.
+ * @tparam _RPP right input ParameterPack.
+ */
+template<typename B, typename CT, typename _LPP, typename _RPP>
+using mix_t = typename __Mix<B, CT, _LPP, _RPP>::type;
+
+#+end_src
+
+** MixType
+
+Type that will hold the mix of the two imput types.
+
+For each possible combination a new =MixType= is going to be created:
+
+#+begin_src C++ :tangled no :results silent
+struct SizeCombination
+{
+    template <typename T, typename S> struct Type
+    {
+        using test_type = T;
+        using size = S;
+    };
+};
+#+end_src
+
+** Builder
+
+=Builder= indicates final postprocessing of genrated mix, it can generate a tuple, another =TypePack= or gtest test cases, or maybe filter generated types:
+
+#+begin_src C++ :tangled no :results silent
+struct MyTypeBuilder
+{
+    template <typename ... Args> struct Build
+    {
+        using type = std::tuple<Args ...>;
+    };
+};
+#+end_src
+
+** Example
+
+Mix TestTypes with Sizes and get a tuple of SizeCombination:
+
+#+begin_src C++ :tangled no :results silent
+// given a left LPP [A, B, C] and right RPP [1, 2, 3] generates an
+// output BUILDER::Build = [A1, A2, A3, B1, B2, B3, C1, C2, C3] of types OT.
+using TestTypes = meta::TypePack<int, float>;
+
+using Sizes =
+        meta::TypePack<meta::Constant<size_t, 0>, meta::Constant<size_t, 1>>;
+
+using FinalTypes =
+        meta::mix_t<MyTypeBuilder, SizeCombination, TestTypes, Sizes>;
+#+end_src
+
+** GTEST example
+
+Complete gtest mix example
+
+#+begin_src C++ :main no :results silent :tangle ../test/mix_test.cpp
+#include <gtest/gtest.h>
+
+#include "utils.hpp"
+
+#include <ParameterPack.hpp>
+
+using Sizes =
+        meta::TypePack<meta::Constant<size_t, 0>, meta::Constant<size_t, 1>>;
+
+struct SizesBuilder
+{
+    template <typename ... Args> struct Build
+    {
+        using type = meta::TypePack<Args...>;
+    };
+};
+struct SizeCombination
+{
+    template <typename P, typename M> struct Type
+    {
+        using prealloc_ = P;
+        using max_ = M;
+    };
+};
+
+using MatrixSizes =
+        meta::mix_t<SizesBuilder, SizeCombination, Sizes, Sizes>;
+
+struct MixTypeSize
+{
+    template <typename T, typename S> struct Type
+    {
+        using type = T;
+        using prealloc_ = typename S::prealloc_;
+        using max_ = typename S::max_;
+    };
+};
+
+template <typename T, size_t P, size_t N> struct MyType
+{
+    using T_ = T;
+    static constexpr size_t P_ = P;
+    static constexpr size_t N_ = N;
+};
+
+struct MyTypeBuilder
+{
+    template <typename ... Args> struct Build
+    {
+        template <typename P>
+        using get_type =
+                MyType<typename P::type, P::prealloc_::value, P::max_::value>;
+        using type = std::tuple<get_type<Args>...>;
+    };
+};
+
+using TestTypes = meta::TypePack<int, float>;
+
+using FinalTypes =
+        meta::mix_t<MyTypeBuilder, MixTypeSize, TestTypes, MatrixSizes>;
+
+
+struct MixTest : public ::testing::Test
+{};
+
+
+TEST_F(MixTest, TEST1){
+    auto mytuple = FinalTypes{};
+    int size = std::tuple_size<decltype(mytuple)>::value;
+
+    ASSERT_EQ(size, 8);
+
+    std::cout << size << " types in the tuple" << std::endl;
+    std::istringstream type_name(type(mytuple));
+    std::string nested_type{};
+    std::string to_print{};
+    while (getline(type_name, nested_type, ','))
+    {
+        if (nested_type.find("MyType") != std::string::npos)
+        {
+            std::cout << to_print << std::endl;
+            to_print = nested_type;
+        }
+        else
+        {
+            to_print += nested_type;
+        }
+    }
+    std::cout << to_print << std::endl;
+}
+#+end_src
+
+* Concat
+
+Given 2 existing =TypePacks= you can concatenate them generating a new one:
+
+** Implementation
+
+#+begin_src C++ :main no :results silent :tangle ../include/ParameterPack.hpp
+/**
+ * @class concat_t
+ *
+ * @brief mix RPP ParameterPack with LPP ParameterPack.
+ *
+ * @details given a left LPP [A, B, C] and right RPP [1, 2, 3] generates [A, B, C, 1, 2, 3].
+ *
+ * @tparam LPP left input ParameterPack.
+ * @tparam RPP right input ParameterPack.
+ */
+template<typename LPP, typename RPP>
+using concat_t = typename __Concat<LPP, RPP>::type;
+
+#+end_src
+
+** Example
+
+Types1 is concatenated with Types2 into Concatenation:
+
+#+begin_src C++ :tangled no :results silent
+// given a left LPP [A, B, C] and right RPP [1, 2, 3] generates [A, B, C, 1, 2, 3].
+using Types1 =
+        meta::TypePack<std::string, double>;
+
+using Types2 = meta::TypePack<int, float>;
+
+using Concatenation =
+        typename meta::concat_t<Types1, Types2>
+#+end_src
+
+** GTEST Example
+
+Complete gtest example:
+
+#+begin_src C++ :main no :results silent :tangle ../test/concat_test.cpp
+#include <gtest/gtest.h>
+
+#include "utils.hpp"
+
+#include <ParameterPack.hpp>
+
+struct MyTypeBuilder
+{
+    template <typename ... Args> struct Build
+    {
+        using type = std::tuple<Args...>;
+    };
+};
+
+using Types1 =
+        meta::TypePack<std::string, double>;
+
+using Types2 = meta::TypePack<int, float>;
+
+using FinalTypes =
+        typename meta::concat_t<Types1, Types2>::unpack_t<MyTypeBuilder>;
+
+
+struct ConcatTest : public ::testing::Test
+{};
+
+
+TEST_F(ConcatTest, TEST1){
+    auto mytuple = FinalTypes{};
+    int size = std::tuple_size<decltype(mytuple)>::value;
+
+    ASSERT_EQ(size, 4);
+
+    std::cerr << size << " types in the tuple" << std::endl;
+    std::istringstream type_name(type(mytuple));
+    std::string nested_type{};
+    std::string to_print{};
+    while (getline(type_name, nested_type, ','))
+    {
+        if (nested_type.find("MyType") != std::string::npos)
+        {
+            std::cerr << to_print << std::endl;
+            to_print = nested_type;
+        }
+        else
+        {
+            to_print += nested_type;
+        }
+    }
+    std::cerr << to_print << std::endl;
+}
+
+#+end_src
+
+#+begin_src c++ :main no :results silent :tangle ../include/ParameterPack.hpp :eval never-export :exports none
+} // namespace meta
+
+#endif // PARAMETER_PACK_H_
+
+#+end_src
